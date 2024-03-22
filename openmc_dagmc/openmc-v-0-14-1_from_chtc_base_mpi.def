@@ -1,8 +1,29 @@
 Bootstrap: localimage
-From: /groupspace/cnerg/users/epflug/dockerfiles/openmpi-4.1.6_gcc-11.3.0.sif
+From: /software/chtc/containers/ubuntu/22.04/openmpi-4.1.6_gcc-11.3.0.sif
+
+%arguments
+	# EMBREE
+	EMBREE_TAG='v3.12.2'
+	EMBREE_REPO='https://github.com/embree/embree'
+	EMBREE_INSTALL_DIR=$HOME/EMBREE/
+
+	# MOAB
+	MOAB_TAG='5.3.0'
+	MOAB_REPO='https://bitbucket.org/fathomteam/moab/'
+
+	# DOUBLE DOWN
+	DD_TAG='v1.0.0'
+	DD_REPO='https://github.com/pshriwise/double-down'
+	DD_INSTALL_DIR=$HOME/Double_down
+
+	# DAGMC
+	DAGMC_BRANCH='v3.2.1'
+	DAGMC_REPO='https://github.com/svalinn/DAGMC'
+	DAGMC_INSTALL_DIR=$HOME/DAGMC/
+	
 
 %files
-	/filespace/e/epflug/research/dockerfiles/hdf5-1_13_2.tar.gz
+	/home/epflug/chtc_apptainer/openmc_dagmc/hdf5-1_13_2.tar.gz /opt/hdf5-1_13_2.tar.gz
 
 %environment
 	export OPENMC_CROSS_SECTIONS=/opt/epflug/cross_sections/fendl-3.2-hdf5/cross_sections.xml
@@ -26,6 +47,9 @@ From: /groupspace/cnerg/users/epflug/dockerfiles/openmpi-4.1.6_gcc-11.3.0.sif
 		libtool \
 		libpng-dev
 
+	# upgrade pip
+	python -m pip install --upgrade pip
+
 	# install python-config and setuptools
 	python -m pip install python-config setuptools
 
@@ -37,12 +61,12 @@ From: /groupspace/cnerg/users/epflug/dockerfiles/openmpi-4.1.6_gcc-11.3.0.sif
 	pkg-config
 
 	# TODO MAYBE DELETE THIS ALSO
-	pip install --upgrade cmake
+	python -m pip install --upgrade cmake
 
 	# set alternative so that python runs python 3 code without installing python 2
 	# the arguments are as follows:
 	# RUN update-alternatives --install </path/to/alternative> <name> </path/to/source> <priority>
-	update-alternatives --install /usr/local/bin/python python /usr/bin/python3 99
+	# update-alternatives --install /usr/local/bin/python python /usr/bin/python3 99
 
 	# create directorries needed for dependencies, data, and the place to clone the openmc repo
 	mkdir /opt/software && \
@@ -65,14 +89,73 @@ From: /groupspace/cnerg/users/epflug/dockerfiles/openmpi-4.1.6_gcc-11.3.0.sif
 	make install && \
 	rm -rf /opt/software/temp/*
 	
-	# no more software requires temp
-	rm -rf /opt/software/temp
-	
 	# HDF5 env vars
 	export HDF5_ROOT=/opt/software/hdf5
 	export HDF5_INCLUDE_DIR=/opt/software/hdf5/include
 	export HDF5_LIBDIR=/opt/software/hdf5/lib
 	export METHOD=opt
+
+	# Install DAGMC
+
+	apt-get -y install libeigen3-dev libnetcdf-dev libtbb-dev libglfw3-dev \
+	&& python -m pip install --upgrade numpy "cython<3.0"
+
+	# Clone and Install EMBREE
+	&& mkdir -p $HOME/EMBREE && cd $HOME/EMBREE \
+	&& git clone --single-branch -b {{EMBREE_TAG}} --depth 1 {{EMBREE_REPO}} \
+	&& mkdir build && cd build \
+	&& cmake ../embree \
+				-DCMAKE_INSTALL_PREFIX={{EMBREE_INSTALL_DIR}} \
+				-DEMBREE_MAX_ISA=NONE \
+				-DEMBREE_ISA_SSE42=ON \
+				-DEMBREE_ISPC_SUPPORT=OFF \
+	&& make 2>/dev/null -j8 install \
+	&& rm -rf {{EMBREE_INSTALL_DIR}}/build {{EMBREE_INSTALL_DIR}}/embree
+
+	# Clone and install MOAB
+	mkdir -p $HOME/MOAB && cd $HOME/MOAB \
+	&& git clone  --single-branch -b {{MOAB_TAG}} --depth 1 {{MOAB_REPO}} \
+	&& mkdir build && cd build \
+	&& cmake ../moab -DENABLE_HDF5=ON \
+					-DENABLE_NETCDF=ON \
+					-DBUILD_SHARED_LIBS=OFF \
+					-DENABLE_FORTRAN=OFF \
+					-DENABLE_BLASLAPACK=OFF \
+	&& make 2>/dev/null -j8 install \
+	&& cmake ../moab \
+				-DENABLE_PYMOAB=ON \
+				-DBUILD_SHARED_LIBS=ON \
+	&& make 2>/dev/null -j8 install \
+	&& cd pymoab && bash install.sh \
+	&& python setup.py install \
+	&& python -c "import pymoab" \
+	&& rm -rf $HOME/MOAB
+
+	# Clone and install Double-Down
+	mkdir -p $HOME/Double_down && cd $HOME/Double_down \
+	&& git clone --single-branch -b {{DD_TAG}} --depth 1 {{DD_REPO}} \
+	&& mkdir build && cd build \
+	&& cmake ../double-down -DCMAKE_INSTALL_PREFIX={{DD_INSTALL_DIR}} \
+							-DMOAB_DIR=/usr/local \
+							-DEMBREE_DIR={{EMBREE_INSTALL_DIR}} \
+	&& make 2>/dev/null -j8 install \
+	&& rm -rf ${DD_INSTALL_DIR}/build {{DD_INSTALL_DIR}}/double-down ; \
+	# Clone and install DAGMC
+	mkdir -p $HOME/DAGMC && cd $HOME/DAGMC \
+	&& git clone --single-branch -b {{DAGMC_BRANCH}} --depth 1 {{DAGMC_REPO}} \
+	&& mkdir build && cd build \
+	&& cmake ../DAGMC -DBUILD_TALLY=ON \
+					-DCMAKE_INSTALL_PREFIX={{DAGMC_INSTALL_DIR}} \
+					-DMOAB_DIR=/usr/local \
+					-DDOUBLE_DOWN=ON \
+					-DDOUBLE_DOWN_DIR={{DD_INSTALL_DIR}} \
+					-DCMAKE_PREFIX_PATH={{DD_INSTALL_DIR}}/lib \
+					-DBUILD_STATIC_LIBS=OFF \
+	&& make 2>/dev/null -j8 install \
+	&& rm -rf {{DAGMC_INSTALL_DIR}}/DAGMC {{DAGMC_INSTALL_DIR}}/build 
+
+	# no more software requires temp
+	rm -rf /opt/software/temp
 	
 	# get FENDL 3.2 for openmc
 	cd /opt/epflug
@@ -84,10 +167,9 @@ From: /groupspace/cnerg/users/epflug/dockerfiles/openmpi-4.1.6_gcc-11.3.0.sif
 	cd /opt/epflug/openmc
 	
 	# build and install OpenMC
-	git checkout v0.14.1 && \
 	mkdir build && \
 	cd build && \
-	cmake -DCMAKE_INSTALL_PREFIX=/opt/software/openmc -DOPENMC_USE_MPI=ON -DCMAKE_BUILD_TYPE=Debug .. && \
+	cmake -DCMAKE_INSTALL_PREFIX=/opt/software/openmc -DOPENMC_USE_MPI=ON -DOPENMC_USE_DAGMC -DCMAKE_BUILD_TYPE=Debug .. && \
 	make install -j8
 	
 		
