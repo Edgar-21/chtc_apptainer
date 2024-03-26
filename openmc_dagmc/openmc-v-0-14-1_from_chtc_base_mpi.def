@@ -1,176 +1,166 @@
 Bootstrap: localimage
-From: /software/chtc/containers/ubuntu/22.04/openmpi-4.1.6_gcc-11.3.0.sif
+From: /home/edgar/research/chtc_apptainer/openmc_dagmc/openmpi-4.1.6_gcc-11.3.0.sif
 
 %arguments
-	# EMBREE
-	EMBREE_TAG='v3.12.2'
-	EMBREE_REPO='https://github.com/embree/embree'
-	EMBREE_INSTALL_DIR=$HOME/EMBREE/
-
-	# MOAB
-	MOAB_TAG='5.3.0'
-	MOAB_REPO='https://bitbucket.org/fathomteam/moab/'
-
-	# DOUBLE DOWN
-	DD_TAG='v1.0.0'
-	DD_REPO='https://github.com/pshriwise/double-down'
-	DD_INSTALL_DIR=$HOME/Double_down
-
-	# DAGMC
-	DAGMC_BRANCH='v3.2.1'
-	DAGMC_REPO='https://github.com/svalinn/DAGMC'
-	DAGMC_INSTALL_DIR=$HOME/DAGMC/
-	
-
-%files
-	/home/epflug/chtc_apptainer/openmc_dagmc/hdf5-1_13_2.tar.gz /opt/hdf5-1_13_2.tar.gz
+	HDF5_VERSION=hdf5_1_14_3
+	MOAB_VERSION=5.3.0
+	DOUBLE_DOWN_VERSION=v1.0.0
+	EMBREE_VERSION=v3.12.2
+	DAGMC_VERSION=v3.2.1
+	BUILD_DIR=/root/build
+	INSTALL_DIR=/opt
+	COMPILER=gcc
+	EMBREE_INSTALL_DIR=/opt/Embree
+	EMBREE_BUILD_DIR=/root/build/Embree
+	CC=gcc
+	CXX=g++
+	HDF5_BUILD_DIR=/root/build/hdf5
+	HDF5_INSTALL_DIR=/opt/hdf5
+	MOAB_BUILD_DIR=/root/build/moab
+	MOAB_INSTALL_DIR=/opt/moab
+	DOUBLE_DOWN_BUILD_DIR=/root/build/double-down
+	DOUBLE_DOWN_INSTALL_DIR=/opt/double-down
+	DAGMC_BUILD_DIR=/root/dagmc
+	DAGMC_INSTALL_DIR=/opt/dagmc
+	OPENMC_BUILD_DIR=/root/openmc
+    OPENMC_INSTALL_DIR=/opt/openmc
+	CROSS_SECTIONS_DIR=/opt/cross_sections
 
 %environment
-	export OPENMC_CROSS_SECTIONS=/opt/epflug/cross_sections/fendl-3.2-hdf5/cross_sections.xml
-	export PATH=/opt/software/openmc/bin:/usr/bin:$PATH
-	export LD_LIBRARY_PATH=/opt/software/openmc/lib:$LD_LIBRARY_PATH
-	export PYTHONPATH=/opt/software/openmc:$PYTHONPATH
-	
+    export PATH=/opt/openmc/bin:/usr/bin:$PATH
+    export LD_LIBRARY_PATH=/opt/openmc/lib:$LD_LIBRARY_PATH
+    export PYTHONPATH=/opt/openmc:$PYTHONPATH
+	export OPENMC_CROSS_SECTIONS={{CROSS_SECTIONS_DIR}}/fendl-3.2-hdf5/cross_sections.xml
+
 %post
-	chmod 777 /tmp # to allow pip to work
-
-	# apt-get software not in base image
-	apt-get update && \
-	apt-get -y upgrade && \
-	apt-get install -y \
-		xz-utils \
-		make \
-		autoconf \
-		flex \
-		bison \
-		libssl-dev \
-		libtool \
-		libpng-dev
-
-	# upgrade pip
-	python -m pip install --upgrade pip
-
-	# install python-config and setuptools
-	python -m pip install python-config setuptools
-
-	# install tzdata before the next package set
-	DEBIAN_FRONTEND=noninteractive TZ=America/Chicago apt-get -y install tzdata
-
-	# packages that need to be installed after tzdata is properly installed
-	apt-get install -y \
-	pkg-config
-
-	# TODO MAYBE DELETE THIS ALSO
-	python -m pip install --upgrade cmake
-
-	# set alternative so that python runs python 3 code without installing python 2
-	# the arguments are as follows:
-	# RUN update-alternatives --install </path/to/alternative> <name> </path/to/source> <priority>
-	# update-alternatives --install /usr/local/bin/python python /usr/bin/python3 99
-
-	# create directorries needed for dependencies, data, and the place to clone the openmc repo
-	mkdir /opt/software && \
-	mkdir /opt/software/openmc && \
-	mkdir /opt/software/temp && \
-	mkdir /opt/epflug && \
-	mkdir /opt/epflug/cross_sections
+	apt-get update --yes && \
+    apt-get install --yes --no-install-recommends \
+        git \
+        ca-certificates \
+        autoconf \
+        make \
+        cmake \
+        g++ \
+        clang \
+        gfortran \
+        python3 \
+        libpython3-dev \
+        zlib1g-dev \
+        libeigen3-dev \
+		libpng-dev  && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
 	
-	# copy hdf5 tar into the correct directory
-	cp /opt/hdf5-1_13_2.tar.gz /opt/software/temp
-	# build hdf5 and install in /opt/software/hdf5
-	mkdir /opt/software/hdf5 && \
-	cd /opt/software/temp && \
-	tar -xvf hdf5-1_13_2.tar.gz && \
-	cd hdf5-hdf5-1_13_2 && \
-	mkdir build && \
+	# EMBREE
+	mkdir -p {{EMBREE_BUILD_DIR}}/build && \
+	cd {{EMBREE_BUILD_DIR}} && \
+	git clone -b {{EMBREE_VERSION}} --depth 1 https://github.com/embree/embree.git && \
 	cd build && \
-	../configure --prefix="/opt/software/hdf5" --enable-optimization=high --enable-shared  --enable-hl --enable-build-mode=production --enable-parallel && \
-	make -j8 && \
-	make install && \
-	rm -rf /opt/software/temp/*
-	
-	# HDF5 env vars
-	export HDF5_ROOT=/opt/software/hdf5
-	export HDF5_INCLUDE_DIR=/opt/software/hdf5/include
-	export HDF5_LIBDIR=/opt/software/hdf5/lib
-	export METHOD=opt
+	cmake ../embree \
+		-DCMAKE_INSTALL_PREFIX={{EMBREE_INSTALL_DIR}} \
+		-DEMBREE_TASKING_SYSTEM=INTERNAL \
+		-DEMBREE_ISPC_SUPPORT=OFF \
+		-DEMBREE_TUTORIALS=OFF \
+		-DEMBREE_TBB_ROOT=/usr && \
+	make -j18 && \
+	make -j18 install && \
+	cd && \
+	rm -rf {{EMBREE_BUILD_DIR}}
 
-	# Install DAGMC
+	# HDF5
+	mkdir -p {{HDF5_BUILD_DIR}}/build && \
+    cd {{HDF5_BUILD_DIR}} && \
+    git clone -b {{HDF5_VERSION}} --depth 1 https://github.com/HDFGroup/hdf5.git && \
+    cd build && \
+    ../hdf5/configure --enable-shared \
+        --prefix={{HDF5_INSTALL_DIR}} \
+        CXX={{CXX}} \
+        CC={{CC}} && \
+    make -j18 && \
+    make install && \
+    cd && \
+    rm -rf {{HDF5_BUILD_DIR}}
+	PATH=$PATH:{{HDF5_INSTALL_DIR}}
 
-	apt-get -y install libeigen3-dev libnetcdf-dev libtbb-dev libglfw3-dev \
-	&& python -m pip install --upgrade numpy "cython<3.0"
+	# MOAB
+	mkdir -p {{MOAB_BUILD_DIR}}/build && \
+    cd {{MOAB_BUILD_DIR}} && \
+    git clone -b {{MOAB_VERSION}} --depth 1 https://bitbucket.org/fathomteam/moab.git && \
+    cd build && \
+    cmake ../moab \
+        -DCMAKE_INSTALL_RPATH={{HDF5_INSTALL_DIR}}/lib:{{MOAB_INSTALL_DIR}}/lib \
+        -DENABLE_HDF5=ON \
+        -DHDF5_ROOT={{HDF5_INSTALL_DIR}} \
+        -DCMAKE_INSTALL_PREFIX={{MOAB_INSTALL_DIR}} \
+        -DCMAKE_CXX_COMPILER={{CXX}} \
+        -DCMAKE_C_COMPILER={{CC}} \
+        -DENABLE_BLASLAPACK=OFF \
+        -DBUILD_SHARED_LIBS=ON \
+        -DENABLE_FORTRAN=OFF \
+        -DENABLE_PYMOAB=OFF && \
+    make -j18 && \
+    make install && \
+    cd && \
+    rm -rf {{MOAB_BUILD_DIR}}
+	PATH=$PATH:{{MOAB_INSTALL_DIR}}
+	MOAB_DIR={{MOAB_INSTALL_DIR}}
 
-	# Clone and Install EMBREE
-	&& mkdir -p $HOME/EMBREE && cd $HOME/EMBREE \
-	&& git clone --single-branch -b {{EMBREE_TAG}} --depth 1 {{EMBREE_REPO}} \
-	&& mkdir build && cd build \
-	&& cmake ../embree \
-				-DCMAKE_INSTALL_PREFIX={{EMBREE_INSTALL_DIR}} \
-				-DEMBREE_MAX_ISA=NONE \
-				-DEMBREE_ISA_SSE42=ON \
-				-DEMBREE_ISPC_SUPPORT=OFF \
-	&& make 2>/dev/null -j8 install \
-	&& rm -rf {{EMBREE_INSTALL_DIR}}/build {{EMBREE_INSTALL_DIR}}/embree
-
-	# Clone and install MOAB
-	mkdir -p $HOME/MOAB && cd $HOME/MOAB \
-	&& git clone  --single-branch -b {{MOAB_TAG}} --depth 1 {{MOAB_REPO}} \
-	&& mkdir build && cd build \
-	&& cmake ../moab -DENABLE_HDF5=ON \
-					-DENABLE_NETCDF=ON \
-					-DBUILD_SHARED_LIBS=OFF \
-					-DENABLE_FORTRAN=OFF \
-					-DENABLE_BLASLAPACK=OFF \
-	&& make 2>/dev/null -j8 install \
-	&& cmake ../moab \
-				-DENABLE_PYMOAB=ON \
-				-DBUILD_SHARED_LIBS=ON \
-	&& make 2>/dev/null -j8 install \
-	&& cd pymoab && bash install.sh \
-	&& python setup.py install \
-	&& python -c "import pymoab" \
-	&& rm -rf $HOME/MOAB
-
-	# Clone and install Double-Down
-	mkdir -p $HOME/Double_down && cd $HOME/Double_down \
-	&& git clone --single-branch -b {{DD_TAG}} --depth 1 {{DD_REPO}} \
-	&& mkdir build && cd build \
-	&& cmake ../double-down -DCMAKE_INSTALL_PREFIX={{DD_INSTALL_DIR}} \
-							-DMOAB_DIR=/usr/local \
-							-DEMBREE_DIR={{EMBREE_INSTALL_DIR}} \
-	&& make 2>/dev/null -j8 install \
-	&& rm -rf ${DD_INSTALL_DIR}/build {{DD_INSTALL_DIR}}/double-down ; \
-	# Clone and install DAGMC
-	mkdir -p $HOME/DAGMC && cd $HOME/DAGMC \
-	&& git clone --single-branch -b {{DAGMC_BRANCH}} --depth 1 {{DAGMC_REPO}} \
-	&& mkdir build && cd build \
-	&& cmake ../DAGMC -DBUILD_TALLY=ON \
-					-DCMAKE_INSTALL_PREFIX={{DAGMC_INSTALL_DIR}} \
-					-DMOAB_DIR=/usr/local \
-					-DDOUBLE_DOWN=ON \
-					-DDOUBLE_DOWN_DIR={{DD_INSTALL_DIR}} \
-					-DCMAKE_PREFIX_PATH={{DD_INSTALL_DIR}}/lib \
-					-DBUILD_STATIC_LIBS=OFF \
-	&& make 2>/dev/null -j8 install \
-	&& rm -rf {{DAGMC_INSTALL_DIR}}/DAGMC {{DAGMC_INSTALL_DIR}}/build 
-
-	# no more software requires temp
-	rm -rf /opt/software/temp
-	
-	# get FENDL 3.2 for openmc
-	cd /opt/epflug
-	wget -q -O - https://anl.box.com/shared/static/3cb7jetw7tmxaw6nvn77x6c578jnm2ey.xz | tar -C cross_sections -xJ
-	
-	# clone openmc
-	git clone --recurse-submodules https://github.com/openmc-dev/openmc.git
-	
-	cd /opt/epflug/openmc
-	
-	# build and install OpenMC
-	mkdir build && \
+	# DOUBLE DOWN
+	mkdir -p {{DOUBLE_DOWN_BUILD_DIR}}/build && \
+	cd {{DOUBLE_DOWN_BUILD_DIR}} && \
+	git clone -b {{DOUBLE_DOWN_VERSION}} --depth 1 https://github.com/pshriwise/double-down.git && \
 	cd build && \
-	cmake -DCMAKE_INSTALL_PREFIX=/opt/software/openmc -DOPENMC_USE_MPI=ON -DOPENMC_USE_DAGMC -DCMAKE_BUILD_TYPE=Debug .. && \
-	make install -j8
-	
-		
+	cmake ../double-down \
+		-DMOAB_DIR={{MOAB_INSTALL_DIR}} \
+		-DCMAKE_INSTALL_PREFIX={{DOUBLE_DOWN_INSTALL_DIR}} \
+		-DEMBREE_DIR={{EMBREE_INSTALL_DIR}} && \
+	make 2>/dev/null -j18 && \
+	make -j18 install && \
+	cd && \
+	rm -rf {{DOUBLE_DOWN_BUILD_DIR}}
+	PATH=$PATH:{{DOUBLE_DOWN_INSTALL_DIR}}
 
+	mkdir -p {{DAGMC_BUILD_DIR}}/build && \
+    cd {{DAGMC_BUILD_DIR}} && \
+    git clone -b {{DAGMC_VERSION}} --depth 1 https://github.com/svalinn/DAGMC.git &&\
+    cd build && \
+    cmake ../DAGMC \
+        -DBUILD_TALLY=ON \
+        -DMOAB_DIR={{MOAB_INSTALL_DIR}} \
+        -DBUILD_STATIC_LIBS=OFF \
+        -DCMAKE_INSTALL_PREFIX={{DAGMC_INSTALL_DIR}} \
+        -DDOUBLE_DOWN=ON \
+        -DDOUBLE_DOWN_DIR={{DOUBLE_DOWN_INSTALL_DIR}} \
+        -Ddd_ROOT={{DOUBLE_DOWN_INSTALL_DIR}}&& \
+    make -j18 && \
+    make -j18 install
+
+	cd && \
+	rm -rf {{DAGMC_BUILD_DIR}}
+	
+	#environment variables for openmc
+    export HDF5_ROOT={{HDF5_INSTALL_DIR}}
+    export HDF5_INCLUDE_DIR={{HDF5_INSTALL_DIR}}/include
+    export HDF5_LIBDIR={{HDF5_INSTALL_DIR}}/lib
+    export METHOD=opt
+
+	#FENDL 3.2b
+	mkdir {{CROSS_SECTIONS_DIR}}
+	cd {{CROSS_SECTIONS_DIR}}
+	mkdir FENDL3.2
+	wget -q -O - https://anl.box.com/shared/static/3cb7jetw7tmxaw6nvn77x6c578jnm2ey.xz | tar -C FENDL3.2 -xJ
+
+	# OPENMC
+    mkdir -p {{OPENMC_BUILD_DIR}}/build && \
+    cd {{OPENMC_BUILD_DIR}} && \
+	git clone --recurse-submodules https://github.com/openmc-dev/openmc.git && \
+	cd build && \
+	cmake ../openmc \
+        -DCMAKE_INSTALL_PREFIX=/opt/software/openmc \
+        -DOPENMC_USE_MPI=ON\
+        -DOPENMC_USE_DAGMC=ON \
+        -DDAGMC_ROOT={{DAGMC_INSTALL_DIR}}\
+        -DCMAKE_BUILD_TYPE=Debug .. && \
+	make install -j18
+
+	cd && \
+	rm -rf {{OPENMC_BUILD_DIR}}
