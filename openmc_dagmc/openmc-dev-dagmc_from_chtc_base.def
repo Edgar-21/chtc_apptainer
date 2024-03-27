@@ -145,9 +145,7 @@ From: /home/edgar/research/chtc_apptainer/openmc_dagmc/openmpi-4.1.6_gcc-11.3.0.
 
 	#FENDL 3.2b
 	mkdir {{CROSS_SECTIONS_DIR}}
-	cd {{CROSS_SECTIONS_DIR}}
-	mkdir FENDL3.2
-	wget -q -O - https://anl.box.com/shared/static/3cb7jetw7tmxaw6nvn77x6c578jnm2ey.xz | tar -C FENDL3.2 -xJ
+	wget -q -O - https://anl.box.com/shared/static/3cb7jetw7tmxaw6nvn77x6c578jnm2ey.xz | tar -C {{CROSS_SECTIONS_DIR}} -xJ
 
 	# OPENMC
     mkdir -p {{OPENMC_BUILD_DIR}}/build && \
@@ -155,7 +153,7 @@ From: /home/edgar/research/chtc_apptainer/openmc_dagmc/openmpi-4.1.6_gcc-11.3.0.
 	git clone --recurse-submodules https://github.com/openmc-dev/openmc.git && \
 	cd build && \
 	cmake ../openmc \
-        -DCMAKE_INSTALL_PREFIX=/opt/software/openmc \
+        -DCMAKE_INSTALL_PREFIX=/opt/openmc \
         -DOPENMC_USE_MPI=ON\
         -DOPENMC_USE_DAGMC=ON \
         -DDAGMC_ROOT={{DAGMC_INSTALL_DIR}}\
