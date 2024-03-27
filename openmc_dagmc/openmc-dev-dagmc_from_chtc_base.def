@@ -63,8 +63,8 @@ From: /software/chtc/containers/ubuntu/22.04/openmpi-4.1.6_gcc-11.3.0.sif
 		-DEMBREE_ISPC_SUPPORT=OFF \
 		-DEMBREE_TUTORIALS=OFF \
 		-DEMBREE_TBB_ROOT=/usr && \
-	make -j18 && \
-	make -j18 install && \
+	make -j8 && \
+	make -j8 install && \
 	cd && \
 	rm -rf {{EMBREE_BUILD_DIR}}
 
@@ -77,7 +77,7 @@ From: /software/chtc/containers/ubuntu/22.04/openmpi-4.1.6_gcc-11.3.0.sif
         --prefix={{HDF5_INSTALL_DIR}} \
         CXX={{CXX}} \
         CC={{CC}} && \
-    make -j18 && \
+    make -j8 && \
     make install && \
     cd && \
     rm -rf {{HDF5_BUILD_DIR}}
@@ -99,7 +99,7 @@ From: /software/chtc/containers/ubuntu/22.04/openmpi-4.1.6_gcc-11.3.0.sif
         -DBUILD_SHARED_LIBS=ON \
         -DENABLE_FORTRAN=OFF \
         -DENABLE_PYMOAB=OFF && \
-    make -j18 && \
+    make -j8 && \
     make install && \
     cd && \
     rm -rf {{MOAB_BUILD_DIR}}
@@ -115,8 +115,8 @@ From: /software/chtc/containers/ubuntu/22.04/openmpi-4.1.6_gcc-11.3.0.sif
 		-DMOAB_DIR={{MOAB_INSTALL_DIR}} \
 		-DCMAKE_INSTALL_PREFIX={{DOUBLE_DOWN_INSTALL_DIR}} \
 		-DEMBREE_DIR={{EMBREE_INSTALL_DIR}} && \
-	make 2>/dev/null -j18 && \
-	make -j18 install && \
+	make 2>/dev/null -j8 && \
+	make -j8 install && \
 	cd && \
 	rm -rf {{DOUBLE_DOWN_BUILD_DIR}}
 	PATH=$PATH:{{DOUBLE_DOWN_INSTALL_DIR}}
@@ -133,8 +133,8 @@ From: /software/chtc/containers/ubuntu/22.04/openmpi-4.1.6_gcc-11.3.0.sif
         -DDOUBLE_DOWN=ON \
         -DDOUBLE_DOWN_DIR={{DOUBLE_DOWN_INSTALL_DIR}} \
         -Ddd_ROOT={{DOUBLE_DOWN_INSTALL_DIR}}&& \
-    make -j18 && \
-    make -j18 install
+    make -j8 && \
+    make -j8 install
 
 	cd && \
 	rm -rf {{DAGMC_BUILD_DIR}}
@@ -160,7 +160,7 @@ From: /software/chtc/containers/ubuntu/22.04/openmpi-4.1.6_gcc-11.3.0.sif
         -DOPENMC_USE_DAGMC=ON \
         -DDAGMC_ROOT={{DAGMC_INSTALL_DIR}}\
         -DCMAKE_BUILD_TYPE=Debug .. && \
-	make install -j18
+	make install -j8
 
 	cd && \
 	rm -rf {{OPENMC_BUILD_DIR}}
