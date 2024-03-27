@@ -33,6 +33,7 @@ From: /software/chtc/containers/ubuntu/22.04/openmpi-4.1.6_gcc-11.3.0.sif
 	export OPENMC_CROSS_SECTIONS={{CROSS_SECTIONS_DIR}}/fendl-3.2-hdf5/cross_sections.xml
 
 %post
+	chmod 777 /tmp
 	apt-get update
 	apt-get -y upgrade
     apt-get install -yes \
