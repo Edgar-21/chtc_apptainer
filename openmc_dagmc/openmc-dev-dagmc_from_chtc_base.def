@@ -36,7 +36,7 @@ From: /software/chtc/containers/ubuntu/22.04/openmpi-4.1.6_gcc-11.3.0.sif
 	chmod 777 /tmp
 	apt-get update
 	apt-get -y upgrade
-    apt-get install -yes \
+    apt-get install -y \
         git \
         ca-certificates \
         autoconf \
