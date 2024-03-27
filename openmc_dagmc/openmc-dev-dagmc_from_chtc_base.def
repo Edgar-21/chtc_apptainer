@@ -1,5 +1,5 @@
 Bootstrap: localimage
-From: /home/edgar/research/chtc_apptainer/openmc_dagmc/openmpi-4.1.6_gcc-11.3.0.sif
+From: /software/chtc/containers/ubuntu/22.04/openmpi-4.1.6_gcc-11.3.0.sif
 
 %arguments
 	HDF5_VERSION=hdf5_1_14_3
@@ -33,8 +33,9 @@ From: /home/edgar/research/chtc_apptainer/openmc_dagmc/openmpi-4.1.6_gcc-11.3.0.
 	export OPENMC_CROSS_SECTIONS={{CROSS_SECTIONS_DIR}}/fendl-3.2-hdf5/cross_sections.xml
 
 %post
-	apt-get update --yes && \
-    apt-get install --yes --no-install-recommends \
+	apt-get update
+	apt-get -y upgrade
+    apt-get install -yes \
         git \
         ca-certificates \
         autoconf \
@@ -47,8 +48,8 @@ From: /home/edgar/research/chtc_apptainer/openmc_dagmc/openmpi-4.1.6_gcc-11.3.0.
         libpython3-dev \
         zlib1g-dev \
         libeigen3-dev \
-		libpng-dev  && \
-    apt-get clean && rm -rf /var/lib/apt/lists/*
+		libpng-dev
+    
 	
 	# EMBREE
 	mkdir -p {{EMBREE_BUILD_DIR}}/build && \
