@@ -1,5 +1,7 @@
 Bootstrap: localimage
 From: /software/chtc/containers/ubuntu/22.04/openmpi-4.1.6_gcc-11.3.0.sif
+%files
+	/home/epflug/chtc_apptainer/openmc_dagmc/hdf5-1.14.3.tar.gz /opt/hdf5-1.14.3.tar.gz
 
 %arguments
 	HDF5_VERSION=hdf5_1_14_3
@@ -49,9 +51,26 @@ From: /software/chtc/containers/ubuntu/22.04/openmpi-4.1.6_gcc-11.3.0.sif
         libpython3-dev \
         zlib1g-dev \
         libeigen3-dev \
-		libpng-dev
-    
-	
+		libpng-dev \
+		libnetcdf-dev
+
+	# HDF5
+	mkdir -p {{HDF5_INSTALL_DIR}}/temp
+	mv /opt/hdf5-1.14.3.tar.gz {{HDF5_INSTALL_DIR}}/temp
+	cd {{HDF5_INSTALL_DIR}}/temp
+	tar -xvf hdf5-1.14.3.tar.gz
+	cd hdf5-1.14.3
+	mkdir build && \
+	cd build && \
+	../configure --prefix={{HDF5_INSTALL_DIR}} \
+		 --enable-optimization=high --enable-shared \
+		 --enable-hl \
+		 --enable-build-mode=production \
+		 --enable-parallel && \
+	make -j8 && \
+	make install
+	rm -rf {{HDF5_INSTALL_DIR}}/temp
+
 	# EMBREE
 	mkdir -p {{EMBREE_BUILD_DIR}}/build && \
 	cd {{EMBREE_BUILD_DIR}} && \
@@ -63,25 +82,10 @@ From: /software/chtc/containers/ubuntu/22.04/openmpi-4.1.6_gcc-11.3.0.sif
 		-DEMBREE_ISPC_SUPPORT=OFF \
 		-DEMBREE_TUTORIALS=OFF \
 		-DEMBREE_TBB_ROOT=/usr && \
-	make -j8 && \
-	make -j8 install && \
+	make -j18 && \
+	make -j18 install && \
 	cd && \
 	rm -rf {{EMBREE_BUILD_DIR}}
-
-	# HDF5
-	mkdir -p {{HDF5_BUILD_DIR}}/build && \
-    cd {{HDF5_BUILD_DIR}} && \
-    git clone -b {{HDF5_VERSION}} --depth 1 https://github.com/HDFGroup/hdf5.git && \
-    cd build && \
-    ../hdf5/configure --enable-shared \
-        --prefix={{HDF5_INSTALL_DIR}} \
-        CXX={{CXX}} \
-        CC={{CC}} && \
-    make -j8 && \
-    make install && \
-    cd && \
-    rm -rf {{HDF5_BUILD_DIR}}
-	PATH=$PATH:{{HDF5_INSTALL_DIR}}
 
 	# MOAB
 	mkdir -p {{MOAB_BUILD_DIR}}/build && \
@@ -98,8 +102,10 @@ From: /software/chtc/containers/ubuntu/22.04/openmpi-4.1.6_gcc-11.3.0.sif
         -DENABLE_BLASLAPACK=OFF \
         -DBUILD_SHARED_LIBS=ON \
         -DENABLE_FORTRAN=OFF \
+		-DCMAKE_C_COMPILER=mpicc \
+		-DCMAKE_CXX_COMPILER=mpicxx \
         -DENABLE_PYMOAB=OFF && \
-    make -j8 && \
+    make -j18 && \
     make install && \
     cd && \
     rm -rf {{MOAB_BUILD_DIR}}
@@ -115,8 +121,8 @@ From: /software/chtc/containers/ubuntu/22.04/openmpi-4.1.6_gcc-11.3.0.sif
 		-DMOAB_DIR={{MOAB_INSTALL_DIR}} \
 		-DCMAKE_INSTALL_PREFIX={{DOUBLE_DOWN_INSTALL_DIR}} \
 		-DEMBREE_DIR={{EMBREE_INSTALL_DIR}} && \
-	make 2>/dev/null -j8 && \
-	make -j8 install && \
+	make 2>/dev/null -j18 && \
+	make -j18 install && \
 	cd && \
 	rm -rf {{DOUBLE_DOWN_BUILD_DIR}}
 	PATH=$PATH:{{DOUBLE_DOWN_INSTALL_DIR}}
@@ -130,11 +136,13 @@ From: /software/chtc/containers/ubuntu/22.04/openmpi-4.1.6_gcc-11.3.0.sif
         -DMOAB_DIR={{MOAB_INSTALL_DIR}} \
         -DBUILD_STATIC_LIBS=OFF \
         -DCMAKE_INSTALL_PREFIX={{DAGMC_INSTALL_DIR}} \
+		-DCMAKE_C_COMPILER=mpicc \
+		-DCMAKE_CXX_COMPILER=mpicxx \
         -DDOUBLE_DOWN=ON \
         -DDOUBLE_DOWN_DIR={{DOUBLE_DOWN_INSTALL_DIR}} \
         -Ddd_ROOT={{DOUBLE_DOWN_INSTALL_DIR}}&& \
-    make -j8 && \
-    make -j8 install
+    make -j18 && \
+    make -j18 install
 
 	cd && \
 	rm -rf {{DAGMC_BUILD_DIR}}
@@ -160,7 +168,9 @@ From: /software/chtc/containers/ubuntu/22.04/openmpi-4.1.6_gcc-11.3.0.sif
         -DOPENMC_USE_DAGMC=ON \
         -DDAGMC_ROOT={{DAGMC_INSTALL_DIR}}\
         -DCMAKE_BUILD_TYPE=Debug .. && \
-	make install -j8
+	make install -j18
 
 	cd && \
 	rm -rf {{OPENMC_BUILD_DIR}}
+
+
