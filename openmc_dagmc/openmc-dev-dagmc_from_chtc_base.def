@@ -167,10 +167,12 @@ From: /software/chtc/containers/ubuntu/22.04/openmpi-4.1.6_gcc-11.3.0.sif
         -DOPENMC_USE_MPI=ON\
         -DOPENMC_USE_DAGMC=ON \
         -DDAGMC_ROOT={{DAGMC_INSTALL_DIR}}\
-        -DCMAKE_BUILD_TYPE=Debug .. && \
+        -DCMAKE_BUILD_TYPE=Release .. && \
 	make install -j18
 
-	cd && \
-	rm -rf {{OPENMC_BUILD_DIR}}
+	cd {{OPENMC_BUILD_DIR}}/openmc
+	python -m pip install .
+
+	
 
 
